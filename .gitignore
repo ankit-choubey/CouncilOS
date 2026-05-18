@@ -121,3 +121,5 @@ active_env/
 logs/
 planning/session_logs/*
 !planning/session_logs/.gitkeep
+profiles/
+
