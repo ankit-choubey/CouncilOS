@@ -1,143 +1,166 @@
-# System Architecture & Design 🏗️
+# Architecture
 
-This document describes the structural design of CouncilOS, detailing its multi-agent debate protocols, supporting memory architecture, and its real-time browser-automation execution pipeline.
+> The structural design contract of CouncilOS. This is **load-bearing**: an
+> implementer must not contradict it without an approved ADR superseding the part
+> in question. Humans read this; AI agents are bound by it.
 
 ---
 
-## 🌀 High-Level Architecture
+## 1. Intent
 
-CouncilOS is built upon the concept of **Collaborative Multi-Agent Debates**. The goal is to maximize decision-making quality by organizing agents into structured, multi-role assemblies. In addition to local API-driven agents, the platform incorporates an advanced **Automation Layer** that allows agents to interact dynamically with web-based LLM sessions (e.g., ChatGPT) as execution targets using a Playwright-backed browser engine.
+CouncilOS sends a prompt to several frontier LLMs and reconciles their answers into
+one trustworthy verdict. The architecture exists to make that **vendor-independent,
+observable, and reliable**.
+
+The guiding principle is **separation by role**:
 
 ```
-                                 ┌────────────────────────┐
-                                 │      User Request      │
-                                 └───────────┬────────────┘
-                                             │
-                                             ▼
-                                 ┌────────────────────────┐
-                                 │    Debate Orchestrator │
-                                 └─────┬────────────┬─────┘
-                                       │            │
-                        ┌──────────────┘            └──────────────┐
-                        ▼                                          ▼
-               ┌─────────────────┐                        ┌─────────────────┐
-               │  Advocate Agent │ ◄────────────────────► │   Critic Agent  │
-               │  (Proposes)     │       Debate           │  (Critiques)    │
-               └────────┬────────┘      Protocol          └────────┬────────┘
-                        │                                          │
-                        │ (Queries automated browser LLMs)         │
-                        ▼                                          │
-               ┌──────────────────┐                                │
-               │ Automation Layer │                                │
-               │ (Playwright Core)│                                │
-               └────────┬─────────┘                                │
-                        │                                          │
-                        └──────────────┬────────────┬──────────────┘
-                                       │            │
-                                       ▼            ▼
-                                 ┌─────────┐    ┌─────────┐
-                                 │ Memory  │    │ Vector  │
-                                 │ Log     │    │ DB      │
-                                 └────┬────┘    └─────────┘
-                                      │
-                                      ▼
-                                 ┌─────────┐
-                                 │ Judge   │
-                                 │ Agent   │
-                                 └────┬────┘
-                                      │
-                                      ▼
-                                 ┌─────────┐
-                                 │ Final   │
-                                 │ Verdict │
-                                 └─────────┘
+Executors execute.  Workers communicate.  Protocols coordinate.  Core orchestrates.
 ```
 
 ---
 
-## 🧱 Core Modules
+## 2. Layered Architecture
 
-### 1. Agents (`app.agents`)
-- **BaseAgent**: Foundation class managing basic message loop, prompt injection, and LLM call logic.
-- **Advocate**: Optimized to propose plans, answer user prompts affirmatively, and provide justifications.
-- **Critic**: Specialized in finding flaws, edge cases, risks, and logical inconsistencies in proposals.
+```
+                        ┌─────────────────────────────────────┐
+                        │                 CORE                 │
+                        │   orchestrates the entire council   │
+                        │  fan-out · retry · collect · judge  │
+                        └─────────────────────────────────────┘
+            ▲                    ▲                     ▲
+            │                    │                     │
+   ┌────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+   │   PROTOCOLS    │  │     WORKERS      │  │    EXECUTORS     │
+   │  coordinate    │  │   communicate    │  │    execute       │
+   │  interactions  │  │   with ONE model │  │  ONE atomic act  │
+   │  between       │  │   (lifecycle:    │  │  (HTTP request,  │
+   │  workers       │  │   start/send/    │  │   browser prompt │
+   │                │  │   stop)          │  │   + read)        │
+   └────────────────┘  └──────────────────┘  └──────────────────┘
+                                                     │
+                                                     ▼
+                                     ┌───────────────────────────┐
+                                     │  TRANSPORT (invisible to  │
+                                     │  Core/Protocols/Workers): │
+                                     │   REST APIs · Playwright  │
+                                     │   browser sessions        │
+                                     └───────────────────────────┘
+```
 
-### 2. Protocols (`app.protocols`)
-- Defines rules of order. It manages the phase transitions (e.g., Proposal -> Critique -> Rebuttal -> Judgment).
-- Determines how agents access context and memory.
+### Dependency direction
 
-### 3. Memory (`app.memory`)
-- **DebateContext**: Ephemeral, structured context storing messages exchanged within the current debate session.
-- **EpisodicMemory**: Storage of past debates to let the system learn from past successes/failures.
+```
+core  ──▶  protocols  ──▶  workers  ──▶  executors  ──▶  transport
+```
 
-### 4. Judges (`app.judges`)
-- Evaluates transcripts based on safety, completeness, accuracy, and consensus.
-- Acts as a termination condition controller.
-
-### 5. Automation Subsystem (`app.automation`) 🚀 [NEW]
-The automation subsystem drives external browser interactions to leverage public LLM interfaces directly inside the debate loop.
-- **BrowserManager** (`browser_manager.py`):
-  - Manages the Playwright asynchronous lifecycle.
-  - Launches a persistent Chromium browser context using local profile caching (`profiles/chatgpt`) to preserve session state, session cookies, and login credentials.
-  - Automatically captures the active page or creates a new page, keeping a single persistent session active on `https://chatgpt.com`.
-- **ChatGPTClient** (`chatgpt_client.py`):
-  - Binds to the active Playwright page object and acts as the programmatic controller.
-  - **Prompt Injection**: Interacts with the ChatGPT DOM, wait-locates the main prompt input area, highlights/clicks, and fills it with user or agent queries.
-  - **DOM Polling & Stream Stabilization**: Polls the DOM at a regular frequency (`2.0s` intervals) to watch the text updates inside the assistant response node (`[data-message-author-role="assistant"]`). Evaluates if text generation has stabilized by matching the content between sequential ticks, preventing premature content extraction during long-form token streaming.
-- **Selectors Registry** (`selectors.py`):
-  - Centralizes DOM target elements to ensure resilience. If ChatGPT updates its UI structure, only this registry needs updates.
-  - *Current configuration*:
-    - `prompt_box`: `'textarea[placeholder="Ask anything"]'`
-    - `send_button`: `'button[data-testid="send-button"]'`
-
-### 6. System Utilities (`app.utils`) 🚀 [NEW]
-- **Rich Logger** (`logger.py`):
-  - Uses the `rich.console` package to deliver beautiful terminal UI tracking.
-  - Distinguishes logs into colorized output categories: `[INFO]` (yellow), `[SUCCESS]` (green), `[WARN]` (red), and structured extraction wrappers to make local debugging human-friendly and elegant.
+A layer may depend on the layer below it and on shared types in `app/core/types`.
+A layer **never** depends upward. The core never imports a concrete worker by name
+except at a single registration point (the future Worker Registry, Milestone 6).
 
 ---
 
-## 🔁 Real-Time Flow & Execution Lifecycle
+## 3. Layer responsibilities
 
-When launching CouncilOS (`app.main.py`), the execution sequence occurs as follows:
+### Executors (`app/executors/`)
+- Perform **one atomic action** and return a raw result.
+- Examples: `http_post_executor`, `browser_prompt_executor`.
+- Stateless with respect to council logic. They do not know about retries,
+  judging, or other workers.
+- Two families are anticipated: **API executors** (HTTP/SDK) and **browser
+  executors** (Playwright DOM). They share a common `Executor` contract.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Main as app.main
-    participant BM as BrowserManager (Playwright)
-    participant Client as ChatGPTClient
-    participant DOM as ChatGPT Web Page
-    participant Logger as Rich Console
+### Workers (`app/workers/`)
+- Own the **full lifecycle** of one external model: `start → send(prompt) → stop`.
+- Use one or more executors under the hood.
+- Return a **normalized `WorkerResponse`** (schema TBD — see open questions).
+- Hide all model-specific quirks (selectors, SDK shapes, auth refresh) inside.
+- One worker per model: `ChatGPTWorker`, `GeminiWorker`, `PerplexityWorker`.
+- **Never** call another worker. Coordination is the protocol layer's job.
 
-    Main->>Logger: Print Startup sequence [INFO]
-    Main->>BM: start() browser context
-    BM->>DOM: Launch Chromium and route to chatgpt.com
-    BM-->>Main: Return active page state
-    Main->>Logger: Log persistent context active [SUCCESS]
-    
-    Main->>Client: Instantiate with active page state
-    Main->>Main: Wait for User Terminal prompt input
-    
-    Main->>Logger: Log prompt injection target [INFO]
-    Main->>Client: send_prompt(user_prompt)
-    Client->>DOM: Click and Fill input field, Click Send Button
-    
-    Main->>Logger: Log DOM stream polling sequence [INFO]
-    Main->>Client: wait_for_response() (Loop & Poll)
-    loop Every 2.0 Seconds
-        Client->>DOM: Query assistant message node
-        DOM-->>Client: Return current inner_text
-        Client->>Client: Compare with previous tick text
-    end
-    Client-->>Main: Return stabilized final text payload
-    
-    Main->>Logger: Output beautiful colorized extraction box
-    Main->>Main: Display text to user terminal
-    
-    Main->>Main: Wait for safe shutdown confirmation
-    Main->>Logger: Log safe teardown sequence [INFO]
-    Main->>BM: stop() browser context
-    BM->>DOM: Close context & save profiles
-    Main->>Logger: Log CouncilOS offline [SUCCESS]
+### Protocols (`app/protocols/`)
+- Coordinate **how a set of workers interact**: round-robin, parallel fan-out,
+  debate, voting.
+- Operate purely against the abstract `Worker` interface; they are vendor-blind.
+- Do not perform I/O themselves — they ask workers to.
+
+### Core (`app/core/`)
+- The orchestrator: composes protocols + workers + the retry engine + the response
+  collector + the judge into an end-to-end run.
+- Holds the public entry point of the framework.
+- Owns cross-cutting types in `app/core/types.py` (shared by all layers).
+
+---
+
+## 4. Supporting modules
+
+| Module            | Responsibility                                      |
+|-------------------|-----------------------------------------------------|
+| `app/storage/`    | Persistence: run transcripts, episodic memory.      |
+| `app/utils/`      | Shared infra: logging, timing, config helpers.      |
+| `app/config/`     | Settings, env loading, worker configuration.        |
+| `app/cli/`        | Command-line entry points (thin; delegates to core).|
+
+These support the four layers; they are not themselves layers.
+
+---
+
+## 5. The end-to-end flow (target state, post-Milestone 9)
+
 ```
+User prompt
+   │
+   ▼
+Core: select council (Worker Registry) ──────────────────────┐
+   │                                                          │
+   ▼                                                          │
+Protocol: fan-out ──┬──▶ Worker: ChatGPT  ──▶ Executor ──▶ ChatGPT
+                   ├──▶ Worker: Gemini   ──▶ Executor ──▶ Gemini
+                   └──▶ Worker: Perplex ──▶ Executor ──▶ Perplexity
+                                  │
+                  (Retry Engine wraps each worker call)
+                                  │
+                                  ▼
+                   Response Collector: normalize + gather
+                                  │
+                                  ▼
+                            Judge: synthesize
+                                  │
+                                  ▼
+                   Final verdict + provenance trail
+```
+
+Each box maps to a frozen milestone (see `roadmap.md`).
+
+---
+
+## 6. Cross-cutting contracts
+
+- **Shared types** live in `app/core/types.py`. Every layer imports from here;
+  no layer defines a type that another layer must accept.
+- **Errors** form a typed hierarchy rooted at `WorkerError` (workers) and an
+  analogous `ExecutorError`. Retries branch on retryable-vs-terminal.
+- **Observability** flows through the shared logger (`app/utils/`). Every layer
+  logs at its own boundaries; nothing reaches down to `print`.
+
+---
+
+## 7. What is explicitly NOT here yet
+
+The architecture above is the **target**. As of Milestone 0, none of the layers
+contain code — only package skeletons. The milestones build this out one contract
+at a time:
+
+- **M1** defines the `Worker` contract (and shared types).
+- **M2** defines the `Executor` contract.
+- **M3–M5** fill in concrete workers.
+- **M6–M9** add registry, retry, collection, judging.
+
+Do not build ahead of the milestone sequence. See `roadmap.md`.
+
+---
+
+## 8. Changing this document
+
+This is a contract. Any change to the layering, dependency direction, or
+responsibilities requires an ADR in `planning/decisions/` and explicit approval.

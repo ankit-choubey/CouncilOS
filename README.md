@@ -1,84 +1,102 @@
-# CouncilOS ⚖️
+# CouncilOS
 
-CouncilOS is an advanced multi-agent coordination and orchestration framework designed to manage complex, multi-perspective decision-making, automated reasoning, and collaborative task execution.
+> A multi-model orchestration framework. Send one prompt to several frontier LLMs,
+> reconcile their answers through a judge, get one trustworthy verdict.
 
-## 🌌 Overview
-
-CouncilOS structures LLM-based agents into **Councils**—specialized assemblies where distinct agents act as advocates, critics, synthesizers, and judges. This framework moves beyond simple agent chaining, enabling complex debate, structured critique, consensus building, and rigorous evaluation protocols.
-
----
-
-## 📂 Project Structure
-
-```
-CouncilOS/
-│
-├── planning/
-│   ├── roadmap.md            # Long-term goal tracking and milestones
-│   ├── architecture.md       # System design, data flow, and agent topologies
-│   ├── decisions.md          # Architecture Decision Records (ADR)
-│   ├── changelog.md          # Version history and release notes
-│   ├── research_notes.md     # Reference materials and experimental ideas
-│   └── session_logs/         # Saved debate and run logs
-│
-├── app/
-│   ├── automation/           # Task scheduling, workflows, and event loops
-│   ├── agents/               # Individual Agent definitions (Advocates, Critics, etc.)
-│   ├── protocols/            # Debate structures, voting, and consensus mechanics
-│   ├── memory/               # Short-term context and long-term semantic memory
-│   ├── retrieval/            # Vector DB integrations and RAG pipelines
-│   ├── judges/               # Evaluators, guardrails, and validation agents
-│   ├── utils/                # Logging, configuration helpers, and shared utilities
-│   └── main.py               # Application entry point
-│
-├── tests/                    # Unit, integration, and agent-interaction tests
-├── logs/                     # Application execution logs
-├── configs/                  # Environment and run configurations
-│
-├── requirements.txt          # Python dependencies
-├── .env                      # Local secret variables
-├── .gitignore                # Git exclusion patterns
-├── README.md                 # Project introduction and documentation
-└── setup.py                  # Installation and packaging script
-```
+A single model is a guess. **A council of independent models is a decision.**
+CouncilOS fans a query out across heterogeneous backends (ChatGPT, Gemini,
+Perplexity, …) and synthesizes a single, explainable answer with a full provenance
+trail — without taking a hard dependency on any one vendor.
 
 ---
 
-## 🛠️ Getting Started
+## Status
 
-### 1. Prerequisites
-- Python 3.10+
-- Virtual Environment (recommended)
+**Milestone 0 — Repository foundation** is complete. The contracts, structure, and
+documentation system are in place. The first production code (the Worker Contract,
+Milestone 1) is next. See `planning/roadmap.md` for the frozen milestone sequence.
 
-### 2. Installation
-Clone the repository and install dependencies:
+---
+
+## Understand the project in 10 minutes
+
+This repository is built to be understood from the files alone — no chat history
+required.
+
+- **For AI coding agents:** read `.ai/AGENT.md` first. It tells you what to read
+  and how to operate.
+- **For humans:** start at `planning/current_focus.md`, then `planning/architecture.md`
+  and `planning/roadmap.md`.
+
+---
+
+## Repository layout (two doc audiences)
+
+```
+.ai/         # AI-readable: contracts, rules, standards, prompts
+planning/    # Human-readable: focus, architecture, roadmap, decisions, changelog
+app/         # The framework (core, workers, executors, protocols, storage, utils, config, cli)
+tests/       # unit / integration / browser / fixtures
+scripts/     # setup.sh, run.sh, test.sh, format.sh
+```
+
+The layered contract (see `planning/architecture.md`):
+
+```
+Executors execute.  Workers communicate.  Protocols coordinate.  Core orchestrates.
+```
+
+---
+
+## Quick start
+
 ```bash
-git clone https://github.com/ankit-choubey/ai-council.git
-cd CouncilOS
-python -m venv .venv
+# 1. Create an isolated virtual environment
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+
+# 2. Upgrade pip, then install the project + dev tooling
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+
+# 3. Configure environment
+cp .env.example .env        # then edit .env with your keys
+
+# 4. Run the test suite
+./scripts/test.sh
 ```
 
-### 3. Configuration
-Copy the environment template and fill in your API keys:
+Or, all-in-one:
+
 ```bash
-cp .env.example .env # Set your keys in .env
+./scripts/setup.sh
 ```
 
 ---
 
-## 🧩 Core Architecture
+## Tooling
 
-CouncilOS relies on four fundamental components to orchestrate high-quality outcomes:
-
-1. **The Council**: A collection of specialized agents convened to address a specific objective.
-2. **Protocols**: Rules of order governing how agents speak, respond, vote, and build consensus.
-3. **Memory**: Shared and private state spaces that allow agents to refer back to previous discussion turns.
-4. **Judges**: Objective metric-based and LLM-based evaluators that determine when a decision meets the quality threshold.
+- **Python 3.10+**, modern `pyproject.toml` (no `setup.py` / `requirements.txt`).
+- **black** + **isort** (formatting), **ruff** (lint), **mypy --strict** (types).
+- **pytest** + **pytest-asyncio** + **pytest-cov** (tests).
+- `./scripts/format.sh` → format + lint
+- `./scripts/test.sh` → unit suite + coverage
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Engineering laws (the short version)
+
+1. Architecture before implementation.
+2. One feature per commit. One responsibility per module.
+3. Every new feature requires tests.
+4. Update `planning/` after implementation — the repo is the source of truth.
+5. Never hardcode model-specific behavior outside workers.
+6. Respect the layered contract.
+
+Full version: `.ai/DEVELOPMENT_RULES.md`.
+
+---
+
+## License
+
+MIT — see `LICENSE` (to be added).

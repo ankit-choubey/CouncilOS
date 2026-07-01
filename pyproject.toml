@@ -1,0 +1,94 @@
+# Modern build & dependency configuration for CouncilOS.
+# NOTE: There is intentionally NO requirements.txt or setup.py. This is the one
+# source of truth for packaging, dependencies, and tooling config.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "councilos"
+version = "0.1.0"
+description = "Multi-model orchestration framework: fan a prompt out to several LLMs and reconcile one verdict."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "CouncilOS" }]
+keywords = ["llm", "multi-agent", "orchestration", "council", "ensemble"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime dependencies land here as milestones introduce them.
+# Kept intentionally empty for Milestone 0 — the foundation ships no code yet.
+dependencies = []
+
+[project.optional-dependencies]
+# Dev tooling. Install with: pip install -e ".[dev]"
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "black>=24.0",
+    "isort>=5.13",
+    "ruff>=0.1",
+    "mypy>=1.7",
+]
+
+# Browser-backed workers (Milestone 3+) will need these. Opt-in for now.
+browser = [
+    "playwright>=1.40",
+    "rich>=13.7",
+]
+
+[project.scripts]
+# CLI entry points are added in Milestone 1+.
+# councilos = "app.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+# --------------------------------------------------------------------------- #
+# Tooling configuration
+# --------------------------------------------------------------------------- #
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["app"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = ["E501"]  # line length handled by black
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+packages = ["app"]
+
+[tool.pytest.ini_options]
+minversion = "7.4"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --cov=app --cov-report=term-missing"
+markers = [
+    "integration: opt-in tests that may hit real (cost-incurring) APIs",
+    "browser: opt-in tests that drive a real browser via Playwright",
+]

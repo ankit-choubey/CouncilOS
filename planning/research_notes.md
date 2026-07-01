@@ -1,40 +1,63 @@
-# Research Notes & Experiments 🔬
+# Research Notes & Experiments
 
-Use this document to log brainstorming sessions, research papers, and experimental results for CouncilOS.
-
----
-
-## 📚 Interesting Reading & References
-- **"Generative Agents: Interactive Simulacra of Human Behavior" (Park et al.)** - Useful for architectural insights on agent memory and observation streams.
-- **"More Agents, More Vote: Consensus in Multi-Agent Systems"** - Theoretical limits and properties of voting systems among LLMs.
-- **"Self-Refine: Iterative Refinement with Self-Feedback" (Madaan et al.)** - Foundation for the Advocate-Critic debate architecture.
+> Hard-won findings worth preserving across sessions. This is **not** a contract —
+> it is reference material. When a note matures into a decision, it becomes an ADR.
 
 ---
 
-## 💡 Architectural Ideas to Explore
-1. **Dynamic Council Size**: Automatically spawn more Critics or Specialists if the primary Judge flags high ambiguity or security risks in a proposal.
-2. **Cognitive Refinement Loops**: Instead of sequential steps, run debate in parallel graphs using consensus-seeking algorithms.
-3. **Optimized Embedding Cache**: Store past critiques and responses locally in a vector store to instantly guide agents away from previously identified flaws.
+## Carried over: browser automation for web-based LLMs
+
+These findings come from the pre-restructure prototype (a Playwright-driven ChatGPT
+client). The code was removed, but the lessons feed **Milestone 3 (ChatGPT Worker)**
+and any future browser-executor-backed worker. Do not rediscover them from scratch.
+
+### 1. Browser profile persistence & anti-detection
+- **Problem:** A default headless Chromium triggers anti-bot challenges (e.g.
+  Cloudflare) and forces a manual email/2FA login on every run.
+- **What worked:**
+  - Launch with a **persistent user-data directory** (`profiles/<model>`) so cookies,
+    localStorage, and login state survive across runs.
+  - Run **`headless=False`** during core operations — it matches a real user's
+    fingerprint (canvas/WebGL) and avoids bot detection.
+- **Implication for M3:** the ChatGPT worker's executor should mount a persistent
+  context dir per model and default to headed mode for reliability.
+
+### 2. DOM-based streaming text stabilization
+- **Problem:** ChatGPT streams tokens over SSE into the DOM. Reading immediately
+  after "send" returns truncated text.
+- **What worked — a tick-based stabilization loop:**
+  1. Locate the latest assistant node, e.g. `[data-message-author-role="assistant"]`
+     via `.nth(count - 1)`.
+  2. Read its `inner_text()`.
+  3. Wait a short interval (prototype used `2.0s`).
+  4. Read again. If unchanged and non-empty, streaming has finished.
+- **Why it beat alternatives:** lighter than a `MutationObserver` injection,
+  resilient to latency spikes, decoupled from network sniffing.
+- **Implication for M2/M3:** a browser executor's "read response" action should
+  expose a configurable stabilization policy. The worker (not the executor) should
+  decide when "done" is acceptable.
+
+### 3. Selectors as a registry
+- **Problem:** web UIs change; hardcoding selectors in logic makes it brittle.
+- **What worked:** a single decoupled selector map per target (`prompt_box`,
+  `send_button`, assistant node). When the UI changes, only the map is patched.
+- **Implication:** each browser-backed worker owns its own selector map; it never
+  leaks into protocols or core.
 
 ---
 
-## 🔬 Web Automation & Dynamic Scraper Experiments 🚀 [NEW]
+## Reading list (background)
 
-During the implementation of the automation layer (`app/automation`), we researched and resolved two core challenges in web-scraping dynamic single-page LLM apps:
+- **Generative Agents (Park et al.)** — agent memory and observation streams.
+- **Self-Refine (Madaan et al.)** — iterative critique/refine; relevant to judging.
+- **More Agents, More Vote** — properties/limits of voting among LLMs.
 
-### 1. Browser Profile Persistence & Anti-Detection
-- **Problem**: Launching a default headless Chromium instance triggers anti-bot mechanisms (like Cloudflare Turnstile) and requires users to manually complete multi-factor email/password logins on every test run.
-- **Solution**: We implemented persistent context directory mounting (`profiles/chatgpt`). 
-- **Findings**:
-  - Setting `headless=False` during core operations simulates standard user behavior and prevents Canvas/WebGl fingerprint mismatch detection.
-  - Persisting storage/session states under a local path ensures login cookies and OpenAI local storage configurations remain intact across program execution cycles.
+---
 
-### 2. DOM-Based Streaming Text Stabilization
-- **Problem**: ChatGPT streams responses using Server-Sent Events (SSE), adding tokens dynamically to the DOM. Standard locator evaluations extract incomplete, truncated sentences because the scraper triggers immediately after the send action completes.
-- **Solution**: Designed an asynchronous tick-based stabilization loop:
-  - Locate the latest assistant response container: `[data-message-author-role="assistant"]` using `.nth(count - 1)`.
-  - Fetch the `inner_text()` string.
-  - Wait for an evaluation period (`2.0` seconds).
-  - Compare the newly fetched `inner_text` string with the previous snapshot.
-  - **Verdict**: If the text matches exactly and is non-empty, the LLM has stopped streaming, and the token generation is marked as complete.
-- **Benefits**: Lightweight alternative to complex JS `MutationObserver` injections, highly resilient to latency spikes, and completely decoupled from browser network socket sniffing.
+## Ideas to explore (not committed)
+
+- **Dynamic council size:** spawn extra workers if the judge flags high ambiguity.
+- **Embedding cache of past critiques:** steer agents away from known-bad paths.
+- **Parallel debate graphs** instead of sequential round-robin.
+
+These are noted for the future; they are out of scope until after Milestone 9.
