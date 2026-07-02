@@ -66,29 +66,36 @@ CouncilOS/
 
 ### `app/` — the framework
 
-| Path                       | Status | Responsibility                                          |
-|----------------------------|--------|---------------------------------------------------------|
-| `app/__init__.py`          | 🔲     | Package marker.                                         |
-| `app/core/`                | 🔲     | Orchestrates the council end-to-end.                    |
-| `app/core/types.py`        | 🔲     | Shared types used across all layers (M1).               |
-| `app/workers/`             | 🔲     | One Worker per external model. **Next: the contract.**  |
-| `app/workers/base.py`      | 🔲     | Abstract `Worker` + `BaseWorker` (Milestone 1).         |
-| `app/executors/`           | 🔲     | Atomic actions (HTTP / browser). Contract in M2.        |
-| `app/protocols/`           | 🔲     | Coordinate worker interactions.                         |
-| `app/storage/`             | 🔲     | Persistence: transcripts, episodic memory.              |
-| `app/utils/`               | 🔲     | Shared logger, timing, helpers.                         |
-| `app/utils/logger.py`      | 🔲     | Rich-backed shared console logger.                      |
-| `app/config/`              | 🔲     | Settings + env loading.                                 |
-| `app/cli/`                 | 🔲     | Thin CLI delegating to core.                            |
+| Path                            | Status | Responsibility                                              |
+|---------------------------------|--------|-------------------------------------------------------------|
+| `app/__init__.py`               | ✅     | Package marker; exports `__version__`.                      |
+| `app/core/task.py`              | ✅     | Immutable `Task` dataclass (prompt + id + timestamp + tags).|
+| `app/core/response.py`          | ✅     | Frozen `Response` dataclass + `ResponseStatus` enum.         |
+| `app/core/types.py`             | ✅     | Re-export pointer for core types (Task, Response).           |
+| `app/core/`                     | 🔲     | Orchestrator logic lands here (M6+).                        |
+| `app/workers/base_worker.py`   | ✅     | Abstract `BaseWorker` + error hierarchy + Template Method.   |
+| `app/workers/`                  | 🔲     | Concrete workers (ChatGPT M3, Gemini M4, Perplexity M5).    |
+| `app/executors/base_executor.py`| ✅     | Generic `BaseExecutor` + error hierarchy + async context.    |
+| `app/executors/`                | 🔲     | Concrete executors (HTTP M2, browser M2+).                   |
+| `app/protocols/`                | 🔲     | Coordinate worker interactions.                             |
+| `app/storage/`                 | 🔲     | Persistence: transcripts, episodic memory.                  |
+| `app/utils/`                   | 🔲     | Shared logger, timing, helpers.                            |
+| `app/config/`                   | 🔲     | Settings + env loading.                                    |
+| `app/cli/`                      | 🔲     | Thin CLI delegating to core.                                 |
 
 ### `tests/`
 
-| Path                  | Status | Responsibility                                   |
-|-----------------------|--------|--------------------------------------------------|
-| `tests/unit/`         | 🔲     | Fast, no-network unit tests (mirror `app/`).     |
-| `tests/integration/`  | 🔲     | Opt-in tests that may hit real APIs.             |
-| `tests/browser/`      | 🔲     | Opt-in tests that drive real browsers.           |
-| `tests/fixtures/`     | 🔲     | Shared fixtures / sample data.                   |
+| Path                              | Status | Responsibility                                       |
+|-----------------------------------|--------|------------------------------------------------------|
+| `tests/conftest.py`               | ✅     | Root fixtures; ensures `app/` is importable.         |
+| `tests/unit/core/test_task.py`    | ✅     | Tests for `Task` construction, immutability, validation. |
+| `tests/unit/core/test_response.py`| ✅     | Tests for `Response` and `ResponseStatus`.             |
+| `tests/unit/executors/test_base_executor.py` | ✅ | Tests for `BaseExecutor`, errors, lifecycle. |
+| `tests/unit/workers/test_base_worker.py`    | ✅ | Tests for `BaseWorker`, errors, Template Method. |
+| `tests/unit/`                     | 🔲     | Additional unit tests as modules land.                 |
+| `tests/integration/`              | 🔲     | Opt-in tests that may hit real APIs.                  |
+| `tests/browser/`                  | 🔲     | Opt-in tests that drive real browsers.                |
+| `tests/fixtures/`                 | 🔲     | Shared fixtures / sample data.                        |
 
 ### `scripts/`
 

@@ -32,6 +32,9 @@
 | ADR  | Title                                                | Status   | Date       |
 |------|------------------------------------------------------|----------|------------|
 | 0001 | Repository foundation & the layered contract         | Accepted | 2026-07-01 |
+| 0002 | Response schema is a typed object, not a bare string | Accepted | 2026-07-02 |
+| 0003 | Async-first contract from day one                    | Accepted | 2026-07-02 |
+| 0004 | Error taxonomy — retryable vs terminal, per layer    | Accepted | 2026-07-02 |
 
 ---
 

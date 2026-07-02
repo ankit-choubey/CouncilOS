@@ -13,7 +13,40 @@
 
 ## [Unreleased]
 
-_(Nothing staged yet. Milestone 1 work will appear here.)_
+_(Nothing staged. Milestone 2 work will appear here.)_
+
+---
+
+## [0.2.0] — 2026-07-02 — "Core Contracts"
+
+### Added — shared data types
+- `app/core/task.py`: immutable `Task` dataclass (prompt + id + timestamp + tags).
+- `app/core/response.py`: frozen `Response` dataclass (text, worker_name, status,
+  latency_ms, created_at, error) + `ResponseStatus` enum (SUCCESS/FAILED).
+
+### Added — executor contract
+- `app/executors/base_executor.py`: generic `BaseExecutor(ABC, Generic[R])` with
+  `_execute(request) -> str`, lifecycle (`start`/`stop`), async context manager
+  support.
+- Error hierarchy: `ExecutorError → RetryableExecutorError / TerminalExecutorError`.
+
+### Added — worker contract
+- `app/workers/base_worker.py`: `BaseWorker(ABC)` with Template Method
+  `send(task) -> Response` (timing + error wrapping + provenance), abstract
+  `_send(task) -> str`, lifecycle support.
+- Error hierarchy: `WorkerError → RetryableWorkerError / TerminalWorkerError`.
+
+### Added — tests
+- 42 unit tests across 4 test files (task, response, executor, worker).
+- 99% coverage on `app/`. All passing on Python 3.14.
+
+### Added — ADRs
+- ADR-0002: Response schema is a typed object, not a bare string.
+- ADR-0003: Async-first contract from day one.
+- ADR-0004: Error taxonomy — retryable vs terminal, per layer.
+
+### Changed
+- `app/core/types.py`: updated docstring to point at real type modules.
 
 ---
 

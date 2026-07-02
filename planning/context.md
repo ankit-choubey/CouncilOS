@@ -8,10 +8,9 @@
 
 ## State right now
 
-- Repository restructured to the `.ai/` + `planning/` split (2026-07-01).
-- Old debate-era code (`app/agents`, `app/automation`, advocate/critic/judge)
-  removed. It lives in git history under the pre-restructure commits if ever
-  needed. **It is superseded** by the worker/executor/protocol/core layering.
+- Milestone 1 complete (2026-07-02). All four core contracts implemented + tested.
+- The system `python3` is 3.9.6; project requires 3.10+. The `.venv` is built with
+  `/usr/local/bin/python3.14`. Document this in setup.sh notes if it trips anyone.
 - One valuable artifact was preserved as research: the browser-automation findings
   (persistent profiles, anti-detection, DOM stream-stabilization). See
   `research_notes.md` — they will feed Milestone 3 (ChatGPT Worker) directly.
@@ -26,14 +25,17 @@
 
 ## Open threads (to resolve soon)
 
-1. Response schema for `WorkerResponse` — bare string vs typed object.
-2. Async vs sync worker interface.
-3. Failure taxonomy (retryable vs terminal).
-4. Whether executors own sessions or workers hand them handles.
-5. Judge input shape.
+1. Response schema for `WorkerResponse` — bare string vs typed object. **→ Closed:
+   ADR-0002. Typed `Response` dataclass.**
+2. Async vs sync worker interface. **→ Closed: ADR-0003. Async-first.**
+3. Failure taxonomy (retryable vs terminal). **→ Closed: ADR-0004. Typed error
+   hierarchy per layer.**
+4. Whether executors own sessions or workers hand them handles. **→ Still open.
+   To be settled in M2 when concrete executor families are designed.**
+5. Judge input shape. **→ Still open. To be settled in M9.**
 
-These are mirrored in `.ai/PROJECT_CONTEXT.md → Open Design Questions` and must be
-closed with ADRs before the relevant milestone's code lands.
+Remaining open questions are mirrored in `.ai/PROJECT_CONTEXT.md → Open Design
+Questions` and must be closed with ADRs before the relevant milestone's code lands.
 
 ## Scratch
 

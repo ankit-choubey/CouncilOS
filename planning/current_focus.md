@@ -8,42 +8,42 @@
 
 ## Active Milestone
 
-**Milestone 1 — Worker Contract**
+**Milestone 2 — Executor Contract** 🔜
 
 ## Active Task
 
-**None yet.** Milestone 0 (this repository restructure) was just completed. The
-first task of Milestone 1 has not been opened.
+**None yet.** Milestone 1 (Worker Contract) just completed. M2 has not been opened.
 
 ## Next Action (proposed, awaiting approval)
 
-Open Milestone 1 by defining the abstract `Worker` contract and its supporting
-data types in `app/workers/`. Specifically:
+Open Milestone 2 by defining concrete executor families that implement the
+`BaseExecutor` contract from `app/executors/base_executor.py`. Specifically:
 
-1. Decide the **response schema** — propose a typed `WorkerResponse` (status, text,
-   provenance, latency) rather than a bare string. Record as **ADR-002**.
-2. Decide **sync vs async** — propose **async from day one** (concurrency is core
-   to the vision). Record as **ADR-003**.
-3. Decide the **failure model** — propose a `WorkerError` hierarchy splitting
-   retryable from terminal. Record as **ADR-004**.
-4. Implement the `Worker` Protocol and a `BaseWorker` ABC with the lifecycle
-   (`start` / `send` / `stop`).
-5. Add unit tests for the contract using a `FakeWorker` that satisfies the
-   protocol.
+1. Define the `HttpApiExecutor` — a generic executor for REST/SDK model calls.
+   What request type does it use? (url, method, body? Or a wrapped `ApiRequest`?)
+2. Define the `BrowserExecutor` — an executor that drives a Playwright page.
+   Request type: prompt + selectors.
+3. Build on the error taxonomy: both families must raise `RetryableExecutorError`
+   or `TerminalExecutorError` appropriately.
+4. Write unit tests with fake HTTP and fake browser backends.
+5. Update `codebase.md` + `changelog.md`.
 
 Nothing here is started. It is the proposed plan for the next session.
 
 ## Blocked / Waiting
 
-- Nothing is currently blocked. The four open design questions in
-  `.ai/PROJECT_CONTEXT.md` need decisions before code lands.
+- Nothing is currently blocked. The four open design questions from
+  `.ai/PROJECT_CONTEXT.md` were resolved by ADRs 0002–0004 in M1.
+  Remaining open question: whether executors own transport sessions or workers
+  hand them handles (see `context.md`). This should be settled in M2.
 
 ## Just Finished
 
-**Milestone 0 — Repository foundation.** Established the `.ai/` (AI-readable) and
-`planning/` (human-readable) split, the layered contract, the engineering laws, the
-frozen roadmap, and an empty but correctly-shaped `app/` package. See
-`changelog.md` entry `[0.1.0]`.
+**Milestone 1 — Worker Contract.** Implemented `Task`, `Response`/`ResponseStatus`,
+`BaseExecutor`, and `BaseWorker` with full type hints, async lifecycle,
+error taxonomies, and Template Method `send()`. 42 unit tests, 99% coverage,
+all passing. ADRs 0002–0004 record the three contract decisions. See `changelog.md`
+entry `[0.2.0]` and `progress.md` M1 retrospective.
 
 ---
 

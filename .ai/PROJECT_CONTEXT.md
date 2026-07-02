@@ -79,7 +79,7 @@ The end state is a reliable, vendor-independent reasoning engine.
 
 ## Current Milestone
 
-**Milestone 1 — Worker Contract.**
+**Milestone 2 — Executor Contract.**
 
 The repository foundation (Milestone 0) is complete. The next piece of production
 code is the abstract `Worker` contract and its supporting data types — the single
@@ -126,15 +126,13 @@ Everything through Milestone 9 is the **usable core**. Beyond that is enhancemen
 
 These are unresolved and should *not* be silently decided by an implementer:
 
-1. **Response schema.** What exactly does a Worker return? A bare string? A typed
-   `WorkerResponse` with tokens/latency/provenance? *(To be settled in M1.)*
-2. **Sync vs async.** Do workers expose an async interface from day one (concurrent
-   fan-out is core to the vision), or start synchronous and add async later?
-3. **Failure model.** What does a worker return/raise on timeout, DOM change, or
-   auth failure? How does the Retry Engine distinguish retryable from terminal?
+1. ~~**Response schema.**~~ **→ Resolved (ADR-0002).** Typed `Response` dataclass.
+2. ~~**Sync vs async.**~~ **→ Resolved (ADR-0003).** Async-first from day one.
+3. ~~**Failure model.**~~ **→ Resolved (ADR-0004).** Typed error hierarchy per layer.
 4. **Transport of executors.** Does the Executor contract own the browser/HTTP
    session, or does the Worker own it and hand the executor a handle?
+   *(To be settled in M2.)*
 5. **Judge input.** Does the Judge consume raw strings, normalized responses, or a
-   structured transcript? This ripples back into the response schema.
+   structured transcript? *(To be settled in M9.)*
 
 Decisions on these are recorded in `planning/decisions/` as ADRs when made.
